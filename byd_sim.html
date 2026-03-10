@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>比亚迪闪充（兆瓦闪充2.0）模拟工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+        }
+        body {
+            background: #eef2f5;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 16px;
+        }
+        .sim-dashboard {
+            max-width: 1400px;
+            width: 100%;
+            background: white;
+            border-radius: 32px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 24px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .header h1 {
+            margin: 0;
+            font-weight: 600;
+            font-size: 1.8rem;
+            background: linear-gradient(145deg, #0b3b5c, #1b6b8f);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .btn-group {
+            display: flex;
+            gap: 12px;
+        }
+        .btn {
+            border: none;
+            background: #e7eef4;
+            padding: 10px 28px;
+            border-radius: 60px;
+            font-weight: 600;
+            font-size: 1rem;
+            color: #1a4b6d;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+        }
+        .btn-primary {
+            background: #1a6f9c;
+            color: white;
+            box-shadow: 0 8px 16px rgba(26, 111, 156, 0.3);
+        }
+        .btn-primary:hover {
+            background: #135b82;
+        }
+        .btn:hover {
+            background: #d0dee9;
+        }
+        .finished-badge {
+            background: #e6f7ec;
+            padding: 8px 24px;
+            border-radius: 60px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 128, 0, 0.1);
+        }
+        .config-panel {
+            background: #f8fafd;
+            border-radius: 24px;
+            padding: 20px;
+            margin-bottom: 24px;
+            border: 1px solid #dde7f0;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 16px;
+        }
+        .config-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .config-item label {
+            font-weight: 600;
+            color: #1d3a5c;
+            font-size: 0.85rem;
+            letter-spacing: 0.3px;
+        }
+        .config-item select,
+        .config-item input[type="range"],
+        .config-item input[type="number"] {
+            padding: 6px 12px;
+            border-radius: 40px;
+            border: 1px solid #cbd6e3;
+            background: white;
+            font-size: 0.9rem;
+        }
+        .value-badge {
+            background: white;
+            border-radius: 40px;
+            padding: 4px 12px;
+            border: 1px solid #cbd6e3;
+            font-size: 0.85rem;
+            display: inline-block;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+        .weight-sliders {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .weight-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.75rem;
+        }
+        .weight-item input[type=range] {
+            width: 60px;
+        }
+        .weight-item input[type=number] {
+            width: 50px;
+            padding: 2px 4px;
+        }
+        .chart-container {
+            background: #ffffff;
+            border-radius: 32px;
+            padding: 20px 20px 10px 20px;
+            margin-bottom: 28px;
+            border: 1px solid #dae8f2;
+            box-shadow: 0 6px 14px rgba(0, 20, 40, 0.04);
+        }
+        .chart-title {
+            font-weight: 600;
+            color: #1e4f72;
+            margin-bottom: 16px;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        canvas#mainChart {
+            width: 100%;
+            height: 280px;
+            display: block;
+            border-radius: 24px;
+            background: #fbfdff;
+        }
+        .battery-and-stats {
+            display: grid;
+            grid-template-columns: 1.5fr 0.9fr 1fr;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+        .battery-array {
+            background: #f0f7fe;
+            border-radius: 30px;
+            padding: 20px;
+            border: 1px solid #cde0f0;
+        }
+        .battery-array h3 {
+            margin: 0 0 14px 0;
+            font-size: 1rem;
+            color: #1d4d73;
+            display: flex;
+            justify-content: space-between;
+        }
+        .cell-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+        .battery-cell {
+            background: white;
+            border-radius: 20px;
+            padding: 8px 2px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+            border: 1px solid #c9ddef;
+        }
+        .cell-label {
+            font-size: 0.6rem;
+            color: #4f6f8a;
+            margin-bottom: 4px;
+        }
+        .cell-soc {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #1e6f5c;
+        }
+        .total-soc {
+            margin-top: 16px;
+            background: #d9e9f5;
+            border-radius: 60px;
+            padding: 10px 18px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+        }
+        .slots-card,
+        .stats-card {
+            background: #f5faff;
+            border-radius: 30px;
+            padding: 20px;
+            border: 1px solid #d2e3f2;
+        }
+        .slot-indicator {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin: 10px 0;
+        }
+        .slot-item {
+            background: white;
+            border-radius: 40px;
+            padding: 14px 18px;
+            flex: 1;
+            min-width: 130px;
+            border-left: 6px solid #90c2d9;
+        }
+        .slot-item.charging {
+            border-left-color: #21a67a;
+        }
+        .slot-item.preheat {
+            border-left-color: #f4b740;
+        }
+        .slot-item.swap {
+            border-left-color: #a0b8cc;
+        }
+        .power-detail {
+            background: #eef4fa;
+            border-radius: 24px;
+            padding: 18px;
+            margin-top: 16px;
+        }
+        .log-area {
+            background: #1d2b3a;
+            border-radius: 24px;
+            padding: 16px;
+            color: #b3dcff;
+            font-family: 'JetBrains Mono', monospace;
+            height: 150px;
+            overflow-y: auto;
+            font-size: 0.8rem;
+        }
+        .grid-bg {
+            background: transparent;
+        }
+        .balance-toggle {
+            display: flex;
+            gap: 8px;
+            background: white;
+            border-radius: 40px;
+            padding: 4px;
+            border: 1px solid #cbd6e3;
+        }
+        .balance-toggle button {
+            flex: 1;
+            padding: 6px 12px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+        .balance-toggle .active {
+            background: #1a6f9c;
+            color: white;
+        }
+        .balance-toggle .inactive {
+            background: transparent;
+            color: #4f6f8a;
+        }
+    </style>
+</head>
+<body class="p-4">
+    <div class="sim-dashboard">
+        <header class="header">
+            <h1>比亚迪闪充（兆瓦闪充2.0）模拟工具</h1>
+            <div class="flex items-center gap-4">
+                <div class="finished-badge">
+                    <p class="text-xs text-emerald-700">已完成闪充</p>
+                    <p id="finishedCount" class="text-3xl font-bold text-emerald-600">0</p>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" id="startBtn">▶ 开始模拟</button>
+                    <button class="btn" id="resetBtn">⟲ 重置</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="config-panel">
+            <div class="config-item">
+                <label>🔌 电网功率</label>
+                <select id="gridPower">
+                    <option value="120">120 kW</option>
+                    <option value="240" selected>240 kW</option>
+                    <option value="360">360 kW</option>
+                    <option value="600">600 kW</option>
+                </select>
+            </div>
+            <div class="config-item">
+                <label>🧲 储能总容量</label>
+                <input type="range" id="totalCap" min="200" max="2000" value="360" step="10">
+                <span class="value-badge" id="capDisplay">360 kWh</span>
+            </div>
+            <div class="config-item">
+                <label>🚘 车位数</label>
+                <input type="number" id="slotNum" min="1" max="2" value="2" step="1">
+                <span class="value-badge" id="slotNumDisplay">2</span>
+            </div>
+            <div class="config-item">
+                <label>⏱️ 换车静置(分)</label>
+                <input type="number" id="restTime" min="0.5" max="8" step="0.5" value="2">
+                <span class="value-badge" id="restDisplay">2.0</span>
+            </div>
+            <div class="config-item">
+                <label>🌡️ 温度模式</label>
+                <div class="flex gap-2 mt-1">
+                    <button id="tempNormal" class="flex-1 py-1 rounded bg-blue-600 text-white text-xs">常温</button>
+                    <button id="tempLow" class="flex-1 py-1 rounded bg-gray-300 text-gray-700 text-xs">低温</button>
+                </div>
+            </div>
+            <div class="config-item">
+                <label>📊 模拟速度</label>
+                <select id="simSpeed">
+                    <option value="1">1x</option>
+                    <option value="10">10x</option>
+                    <option value="30">30x</option>
+                    <option value="60" selected>60x</option>
+                    <option value="120">120x</option>
+                </select>
+            </div>
+            <div class="config-item col-span-2">
+                <label>🚗 车辆电池容量权重 (53/85/24/122 kWh)</label>
+                <div class="weight-sliders">
+                    <div class="weight-item">
+                        <span>53</span>
+                        <input type="range" id="w1" min="0" max="100" value="25" step="1">
+                        <input type="number" id="w1v" value="25" min="0" max="100" class="w-12">
+                    </div>
+                    <div class="weight-item">
+                        <span>85</span>
+                        <input type="range" id="w2" min="0" max="100" value="25" step="1">
+                        <input type="number" id="w2v" value="25" min="0" max="100" class="w-12">
+                    </div>
+                    <div class="weight-item">
+                        <span>24</span>
+                        <input type="range" id="w3" min="0" max="100" value="25" step="1">
+                        <input type="number" id="w3v" value="25" min="0" max="100" class="w-12">
+                    </div>
+                    <div class="weight-item">
+                        <span>122</span>
+                        <input type="range" id="w4" min="0" max="100" value="25" step="1">
+                        <input type="number" id="w4v" value="25" min="0" max="100" class="w-12">
+                    </div>
+                </div>
+            </div>
+            <div class="config-item">
+                <label>⚖️ 放电均衡</label>
+                <div class="balance-toggle" id="balanceToggle">
+                    <button id="balanceOn" class="active">均衡</button>
+                    <button id="balanceOff" class="inactive">非均衡</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+            <div class="lg:col-span-3 chart-container">
+                <div class="chart-title flex justify-between items-center">
+                    <span>📈 实时能量流向 (SOC左轴 / 功率右轴)</span>
+                    <span class="text-sm bg-gray-100 px-3 py-1 rounded-full">⚡ 电网功率: <span id="gridLineLabel"
+                            class="text-red-600 font-bold">240</span> kW</span>
+                </div>
+                <div class="h-80">
+                    <canvas id="mainChart"></canvas>
+                </div>
+            </div>
+            <div class="battery-array">
+                <h3 class="text-sm font-bold text-emerald-700">🔋 储能单元 (8×{总容量/8}kWh)</h3>
+                <div id="batteryGrid" class="cell-grid mb-3"></div>
+                <div class="total-soc">
+                    <span>系统总SOC</span>
+                    <span id="totalSocText" class="text-emerald-600 font-bold">100.0%</span>
+                </div>
+                <div class="w-full bg-gray-200 h-2 rounded-full mt-1">
+                    <div id="totalSocBar" class="bg-emerald-500 h-full rounded-full transition-all" style="width:100%">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="slots-card">
+                <h3 class="text-sm font-bold text-blue-700 mb-3">🚗 充电车位监控</h3>
+                <div id="slotsContainer" class="slot-indicator"></div>
+                <div class="mt-3 text-sm text-gray-600 flex justify-between items-center">
+                    <span>总供电: <span id="totalEnergyDelivered" class="font-bold">0.0</span> kWh</span>
+                </div>
+            </div>
+            <div class="stats-card">
+                <h3 class="text-sm font-bold text-blue-700 mb-3">📋 实时功率与记录</h3>
+                <div class="power-detail text-sm space-y-1">
+                    <p>🔫 枪1功率: <span id="gun1Power" class="font-mono">0</span> kW</p>
+                    <p>🔫 枪2功率: <span id="gun2Power" class="font-mono">0</span> kW</p>
+                    <p>⚡ 电网供给: <span id="gridSupply" class="font-mono">0</span> kW (单块充电)</p>
+                    <p>🔋 储能放电: <span id="batteryOut" class="font-mono">0</span> kW</p>
+                </div>
+                <div class="log-area mt-3" id="logPanel"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const CAR_CAPACITIES = [53.1, 85.4, 23.9, 122.5];
+            const GUN_MAX = 1500;
+            const CHARGER_MAX = 2100;
+
+            const curvePoints = [
+                [10, 0], [18, 1000], [24, 878], [34, 592], [41, 529], [47, 502], [50, 489],
+                [56, 471], [60, 443], [64, 411], [67, 375], [70, 350], [72, 331], [75, 315],
+                [78, 300], [80, 300], [81, 283], [83, 268], [86, 251], [88, 234], [97, 200]
+            ];
+
+            let carWeights = [25, 25, 25, 25];
+            let balanceMode = true;
+
+            let storageBlocks = [];
+            let activeCars = [];
+            let finishedCount = 0;
+            let totalEnergyDelivered = 0;
+            let simRunning = false;
+            let simInterval = null;
+            let tickCounter = 0;
+
+            let chart;
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            let currentTemp = 'normal';
+
+            const startBtn = document.getElementById('startBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const gridPowerSelect = document.getElementById('gridPower');
+            const totalCapRange = document.getElementById('totalCap');
+            const capDisplay = document.getElementById('capDisplay');
+            const slotNumInput = document.getElementById('slotNum');
+            const slotNumDisplay = document.getElementById('slotNumDisplay');
+            const restTimeInput = document.getElementById('restTime');
+            const restDisplay = document.getElementById('restDisplay');
+            const tempNormalBtn = document.getElementById('tempNormal');
+            const tempLowBtn = document.getElementById('tempLow');
+            const simSpeedSelect = document.getElementById('simSpeed');
+            const gridLineLabel = document.getElementById('gridLineLabel');
+            const batteryGrid = document.getElementById('batteryGrid');
+            const totalSocText = document.getElementById('totalSocText');
+            const totalSocBar = document.getElementById('totalSocBar');
+            const slotsContainer = document.getElementById('slotsContainer');
+            const finishedSpan = document.getElementById('finishedCount');
+            const totalEnergySpan = document.getElementById('totalEnergyDelivered');
+            const gun1Power = document.getElementById('gun1Power');
+            const gun2Power = document.getElementById('gun2Power');
+            const gridSupplySpan = document.getElementById('gridSupply');
+            const batteryOutSpan = document.getElementById('batteryOut');
+            const logPanel = document.getElementById('logPanel');
+
+            const w1 = document.getElementById('w1');
+            const w2 = document.getElementById('w2');
+            const w3 = document.getElementById('w3');
+            const w4 = document.getElementById('w4');
+            const w1v = document.getElementById('w1v');
+            const w2v = document.getElementById('w2v');
+            const w3v = document.getElementById('w3v');
+            const w4v = document.getElementById('w4v');
+            const balanceOn = document.getElementById('balanceOn');
+            const balanceOff = document.getElementById('balanceOff');
+
+            function updateWeightFromSlider(idx, slider, input) {
+                const val = parseInt(slider.value, 10);
+                if (isNaN(val)) return;
+                carWeights[idx] = val;
+                input.value = val;
+            }
+            function updateWeightFromInput(idx, input, slider) {
+                let val = parseInt(input.value, 10);
+                if (isNaN(val) || val < 0) val = 0;
+                if (val > 100) val = 100;
+                carWeights[idx] = val;
+                slider.value = val;
+            }
+            w1.addEventListener('input', () => updateWeightFromSlider(0, w1, w1v));
+            w2.addEventListener('input', () => updateWeightFromSlider(1, w2, w2v));
+            w3.addEventListener('input', () => updateWeightFromSlider(2, w3, w3v));
+            w4.addEventListener('input', () => updateWeightFromSlider(3, w4, w4v));
+            w1v.addEventListener('input', () => updateWeightFromInput(0, w1v, w1));
+            w2v.addEventListener('input', () => updateWeightFromInput(1, w2v, w2));
+            w3v.addEventListener('input', () => updateWeightFromInput(2, w3v, w3));
+            w4v.addEventListener('input', () => updateWeightFromInput(3, w4v, w4));
+
+            balanceOn.addEventListener('click', () => {
+                balanceMode = true;
+                balanceOn.classList.remove('inactive');
+                balanceOn.classList.add('active');
+                balanceOff.classList.remove('active');
+                balanceOff.classList.add('inactive');
+                log('切换到均衡放电模式 (多个电池同时放电)');
+            });
+            balanceOff.addEventListener('click', () => {
+                balanceMode = false;
+                balanceOff.classList.remove('inactive');
+                balanceOff.classList.add('active');
+                balanceOn.classList.remove('active');
+                balanceOn.classList.add('inactive');
+                log('切换到非均衡放电模式 (单电池放电)');
+            });
+
+            function pickRandomCarCapacity() {
+                const weights = carWeights.map(w => Math.max(0, parseInt(w, 10) || 0));
+                const total = weights.reduce((a, b) => a + b, 0);
+                if (total === 0) {
+                    return CAR_CAPACITIES[Math.floor(Math.random() * CAR_CAPACITIES.length)];
+                }
+                let r = Math.random() * total;
+                let cum = 0;
+                for (let i = 0; i < CAR_CAPACITIES.length; i++) {
+                    cum += weights[i];
+                    if (r < cum) {
+                        const cap = CAR_CAPACITIES[i];
+                        log(`🎲 权重[53:${weights[0]},85:${weights[1]},24:${weights[2]},122:${weights[3]}] → 选中 ${cap.toFixed(1)}kWh`);
+                        return cap;
+                    }
+                }
+                return CAR_CAPACITIES[CAR_CAPACITIES.length - 1];
+            }
+
+            let logEntries = [];
+            function log(message) {
+                const timestamp = new Date().toLocaleTimeString();
+                logEntries.push(`[${timestamp}] ${message}`);
+                if (logEntries.length > 30) logEntries.shift();
+                renderLog();
+            }
+            function renderLog() {
+                logPanel.innerHTML = logEntries.map(msg => `<div>${msg}</div>`).join('');
+                logPanel.scrollTop = logPanel.scrollHeight;
+            }
+
+            function getPowerBySoc(soc) {
+                if (soc <= 10) return 0;
+                if (soc >= 97) return 0;
+                for (let i = 0; i < curvePoints.length - 1; i++) {
+                    const [s1, p1] = curvePoints[i];
+                    const [s2, p2] = curvePoints[i + 1];
+                    if (soc >= s1 && soc <= s2) {
+                        const r = (soc - s1) / (s2 - s1);
+                        return p1 + r * (p2 - p1);
+                    }
+                }
+                return 200;
+            }
+
+            function initStorage() {
+                const totalCap = parseFloat(totalCapRange.value);
+                const cellCap = totalCap / 8;
+                storageBlocks = [];
+                for (let i = 0; i < 8; i++) {
+                    storageBlocks.push({ soc: 100.0, capacity: cellCap, direction: 'idle' });
+                }
+            }
+
+            function renderBatteries() {
+                let html = '';
+                storageBlocks.forEach((b, idx) => {
+                    const direction = b.direction === 'charge' ? '⬆️' : (b.direction === 'discharge' ? '⬇️' : '⏸️');
+                    html += `
+                        <div class="battery-cell">
+                            <div class="cell-label flex justify-between w-full">
+                                <span>B${idx + 1}</span>
+                                <span>${direction}</span>
+                            </div>
+                            <div class="cell-soc">${b.soc.toFixed(1)}%</div>
+                            <div class="battery-bar w-full h-1 bg-gray-200 rounded mt-1">
+                                <div class="battery-fill" style="width:${b.soc}%; height:100%; background:#10b981; border-radius:4px;"></div>
+                            </div>
+                        </div>
+                    `;
+                });
+                batteryGrid.innerHTML = html;
+
+                const totalSoc = storageBlocks.reduce((acc, b) => acc + b.soc, 0) / 8;
+                totalSocText.textContent = totalSoc.toFixed(1) + '%';
+                totalSocBar.style.width = totalSoc + '%';
+            }
+
+            function renderSlots() {
+                let html = '';
+                activeCars.forEach((car, idx) => {
+                    let statusText = '';
+                    let statusColor = 'border-gray-300';
+                    if (car.status === 'idle') {
+                        statusText = '空闲';
+                    } else if (car.status === 'preheat') {
+                        statusText = `预热 ${car.timer}s`;
+                        statusColor = 'preheat';
+                    } else if (car.status === 'charging') {
+                        statusText = `充电 ${car.soc.toFixed(1)}%`;
+                        statusColor = 'charging';
+                    } else if (car.status === 'rest') {
+                        statusText = `换车静置 ${car.timer}s`;
+                        statusColor = 'swap';
+                    }
+                    html += `
+                        <div class="slot-item ${statusColor}">
+                            <div class="text-xs text-gray-500">车位 ${idx + 1}</div>
+                            <div class="font-bold">${statusText}</div>
+                        </div>
+                    `;
+                });
+                slotsContainer.innerHTML = html;
+            }
+
+            function updatePowerDisplay(gridSupply, batteryOut, gunPowers) {
+                gun1Power.textContent = (gunPowers[0] || 0).toFixed(0);
+                gun2Power.textContent = (gunPowers[1] || 0).toFixed(0);
+                gridSupplySpan.textContent = gridSupply.toFixed(0);
+                batteryOutSpan.textContent = batteryOut.toFixed(0);
+            }
+
+            function processDischarge(energyDemandKwh) {
+                if (energyDemandKwh <= 1e-6) return 0;
+                let remaining = energyDemandKwh;
+                let actualDischarged = 0;
+
+                if (balanceMode) {
+                    while (remaining > 1e-6) {
+                        const candidates = storageBlocks.filter(b => b.soc > 0.01 && b.direction !== 'charge');
+                        if (candidates.length === 0) break;
+                        candidates.sort((a, b) => b.soc - a.soc);
+                        const target = candidates[0];
+                        const maxGive = target.soc / 100 * target.capacity;
+                        const give = Math.min(remaining, maxGive);
+                        target.soc -= (give / target.capacity) * 100;
+                        target.direction = 'discharge';
+                        actualDischarged += give;
+                        remaining -= give;
+                    }
+                } else {
+                    while (remaining > 1e-6) {
+                        let dischargingCell = storageBlocks.find(b => b.direction === 'discharge' && b.soc > 0.01);
+                        if (!dischargingCell) {
+                            const candidates = storageBlocks.filter(b => b.soc > 0.01 && b.direction !== 'charge');
+                            if (candidates.length === 0) break;
+                            candidates.sort((a, b) => b.soc - a.soc);
+                            dischargingCell = candidates[0];
+                            storageBlocks.forEach(b => { if (b.direction === 'discharge') b.direction = 'idle'; });
+                            dischargingCell.direction = 'discharge';
+                        }
+                        const maxGive = dischargingCell.soc / 100 * dischargingCell.capacity;
+                        const give = Math.min(remaining, maxGive);
+                        dischargingCell.soc -= (give / dischargingCell.capacity) * 100;
+                        actualDischarged += give;
+                        remaining -= give;
+                        if (dischargingCell.soc <= 0.01) {
+                            dischargingCell.direction = 'idle';
+                        }
+                    }
+                }
+                return actualDischarged;
+            }
+
+            function processCharge(energyAvailableKwh) {
+                if (energyAvailableKwh <= 1e-6) return 0;
+                let remaining = energyAvailableKwh;
+                let actualCharged = 0;
+
+                while (remaining > 1e-6) {
+                    let chargingCell = storageBlocks.find(b => b.direction === 'charge' && b.soc < 99.99);
+                    if (!chargingCell) {
+                        const candidates = storageBlocks.filter(b => b.soc < 99.99 && b.direction !== 'discharge');
+                        if (candidates.length === 0) break;
+                        candidates.sort((a, b) => a.soc - b.soc);
+                        chargingCell = candidates[0];
+                        storageBlocks.forEach(b => { if (b.direction === 'charge') b.direction = 'idle'; });
+                        chargingCell.direction = 'charge';
+                    }
+                    const maxAdd = (100 - chargingCell.soc) / 100 * chargingCell.capacity;
+                    const add = Math.min(remaining, maxAdd);
+                    chargingCell.soc += (add / chargingCell.capacity) * 100;
+                    actualCharged += add;
+                    remaining -= add;
+                    if (chargingCell.soc >= 99.99) {
+                        chargingCell.direction = 'idle';
+                    }
+                    break;
+                }
+                return actualCharged;
+            }
+
+            function checkPauseCondition() {
+                const chargingCars = activeCars.filter(c => c.status === 'charging').length;
+                if (chargingCars < 2) return false;
+                const hasAvailableBattery = storageBlocks.some(b => b.soc > 0.01 && b.direction !== 'charge');
+                return !hasAvailableBattery;
+            }
+
+            function resetSim() {
+                if (simInterval) {
+                    clearInterval(simInterval);
+                    simInterval = null;
+                }
+                simRunning = false;
+                startBtn.textContent = '开始模拟';
+                startBtn.classList.remove('bg-yellow-600');
+                startBtn.classList.add('btn-primary');
+
+                const slotCount = parseInt(slotNumInput.value);
+                slotNumDisplay.textContent = slotCount;
+                restDisplay.textContent = restTimeInput.value;
+                capDisplay.textContent = totalCapRange.value + ' kWh';
+                gridLineLabel.textContent = gridPowerSelect.value;
+
+                initStorage();
+
+                activeCars = [];
+                for (let i = 0; i < slotCount; i++) {
+                    activeCars.push({
+                        status: 'idle',
+                        soc: 0,
+                        carCap: 0,
+                        timer: 0,
+                        reqPower: 0
+                    });
+                }
+                finishedCount = 0;
+                totalEnergyDelivered = 0;
+                tickCounter = 0;
+
+                if (chart) {
+                    chart.data.labels = [];
+                    chart.data.datasets.forEach(ds => ds.data = []);
+                    chart.update();
+                }
+
+                logEntries = [];
+                log('系统已重置');
+
+                renderBatteries();
+                renderSlots();
+                updatePowerDisplay(0, 0, [0, 0]);
+                finishedSpan.textContent = '0';
+                totalEnergySpan.textContent = '0.0';
+
+                // 更新电网功率线
+                updateGridLineAnnotation();
+            }
+
+            function tick() {
+                if (!simRunning) return;
+
+                const gridLimit = parseFloat(gridPowerSelect.value);
+                const slotCount = parseInt(slotNumInput.value);
+                const restTimeSec = parseFloat(restTimeInput.value) * 60;
+
+                while (activeCars.length < slotCount) {
+                    activeCars.push({ status: 'idle', soc: 0, carCap: 0, timer: 0, reqPower: 0 });
+                }
+                if (activeCars.length > slotCount) {
+                    activeCars = activeCars.slice(0, slotCount);
+                }
+
+                for (let i = 0; i < activeCars.length; i++) {
+                    const car = activeCars[i];
+
+                    if (car.status === 'idle') {
+                        car.status = currentTemp === 'low' ? 'preheat' : 'charging';
+                        car.carCap = pickRandomCarCapacity();
+                        car.soc = 10.0;
+                        car.timer = currentTemp === 'low' ? 180 : 0;
+                        car.reqPower = 0;
+                    }
+
+                    if (car.status === 'preheat') {
+                        car.timer -= 1;
+                        car.reqPower = 10;
+                        if (car.timer <= 0) {
+                            car.status = 'charging';
+                            log(`车位${i + 1} 预热完成，开始充电`);
+                        }
+                    } else if (car.status === 'charging') {
+                        let reqPower = getPowerBySoc(car.soc);
+                        if (reqPower === 0 && car.soc <= 10.01) reqPower = 1;
+                        reqPower = Math.min(reqPower, GUN_MAX);
+                        car.reqPower = reqPower;
+                    } else if (car.status === 'rest') {
+                        car.timer -= 1;
+                        car.reqPower = 0;
+                        if (car.timer <= 0) {
+                            car.status = 'idle';
+                            log(`车位${i + 1} 换车完成，等待新车`);
+                        }
+                    }
+                }
+
+                const gunReqs = [0, 0];
+                let totalDemand = 0;
+                for (let i = 0; i < activeCars.length; i++) {
+                    const car = activeCars[i];
+                    if (car.status === 'charging' || car.status === 'preheat') {
+                        gunReqs[i] = car.reqPower || 0;
+                        totalDemand += gunReqs[i];
+                    }
+                }
+
+                const demandEnergy = totalDemand / 3600;
+                const actualDischargeEnergy = processDischarge(demandEnergy);
+                const actualDischargePower = actualDischargeEnergy * 3600;
+
+                const chargeEnergy = gridLimit / 3600;
+                const actualChargeEnergy = processCharge(chargeEnergy);
+
+                const actualCarPower = Math.min(actualDischargePower, CHARGER_MAX);
+                const powerRatio = totalDemand > 0 ? actualCarPower / totalDemand : 1;
+
+                for (let i = 0; i < activeCars.length; i++) {
+                    const car = activeCars[i];
+                    if (car.status === 'charging') {
+                        const allocatedPower = (car.reqPower || 0) * powerRatio;
+                        const energy = allocatedPower / 3600;
+                        const socInc = (energy / car.carCap) * 100;
+                        car.soc = Math.min(97, car.soc + socInc);
+                        totalEnergyDelivered += energy;
+
+                        if (car.soc >= 97 - 0.01) {
+                            finishedCount++;
+                            car.status = 'rest';
+                            car.timer = restTimeSec;
+                            log(`车位${i + 1} 充电完成 (97%)，换车静置 ${restTimeSec}s`);
+                        }
+                    }
+                }
+
+                if (checkPauseCondition()) {
+                    log('⚠️ 条件达成：两车充电且无可用放电电池 → 模拟暂停');
+                    simRunning = false;
+                    clearInterval(simInterval);
+                    simInterval = null;
+                    startBtn.textContent = '开始模拟';
+                    startBtn.classList.remove('bg-yellow-600');
+                    startBtn.classList.add('btn-primary');
+                }
+
+                renderBatteries();
+                renderSlots();
+                updatePowerDisplay(actualChargeEnergy * 3600, actualDischargePower, gunReqs);
+                finishedSpan.textContent = finishedCount;
+                totalEnergySpan.textContent = totalEnergyDelivered.toFixed(1);
+
+                tickCounter++;
+                if (tickCounter % 5 === 0) {
+                    const totalSoc = storageBlocks.reduce((acc, b) => acc + b.soc, 0) / 8;
+                    const g1 = activeCars.length > 0 ? (activeCars[0].reqPower || 0) * powerRatio : 0;
+                    const g2 = activeCars.length > 1 ? (activeCars[1].reqPower || 0) * powerRatio : 0;
+                    const car1Soc = (activeCars.length > 0 && activeCars[0].status === 'charging') ? activeCars[0].soc : null;
+                    const car2Soc = (activeCars.length > 1 && activeCars[1].status === 'charging') ? activeCars[1].soc : null;
+
+                    chart.data.labels.push('');
+                    chart.data.datasets[0].data.push(g1);
+                    chart.data.datasets[1].data.push(g2);
+                    chart.data.datasets[2].data.push(car1Soc);
+                    chart.data.datasets[3].data.push(car2Soc);
+                    chart.data.datasets[4].data.push(totalSoc);
+
+                    if (chart.data.labels.length > 60) {
+                        chart.data.labels.shift();
+                        chart.data.datasets.forEach(ds => ds.data.shift());
+                    }
+                    chart.update('none');
+                }
+
+                gridLineLabel.textContent = gridLimit;
+            }
+
+            function initChart() {
+                chart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: [],
+                        datasets: [
+                            { label: '枪1功率', data: [], yAxisID: 'y1', backgroundColor: '#eab308', order: 2, barPercentage: 0.7, categoryPercentage: 0.8 },
+                            { label: '枪2功率', data: [], yAxisID: 'y1', backgroundColor: '#f97316', order: 2, barPercentage: 0.7, categoryPercentage: 0.8 },
+                            { label: '车辆1 SoC', data: [], yAxisID: 'y', type: 'line', borderColor: '#3b82f6', borderWidth: 2, pointRadius: 0, order: 1, spanGaps: true },
+                            { label: '车辆2 SoC', data: [], yAxisID: 'y', type: 'line', borderColor: '#8b5cf6', borderWidth: 2, pointRadius: 0, order: 1, spanGaps: true },
+                            { label: '储能SoC', data: [], yAxisID: 'y', type: 'line', borderColor: '#10b981', borderWidth: 2, borderDash: [5, 5], pointRadius: 0, order: 1, spanGaps: true }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: false,
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                position: 'left',
+                                min: 0,
+                                max: 100,
+                                title: { display: true, text: 'SoC (%)', color: '#4b5563' },
+                                grid: { color: '#e5e7eb' }
+                            },
+                            y1: {
+                                type: 'linear',
+                                position: 'right',
+                                min: 0,
+                                max: 2200,
+                                title: { display: true, text: '功率 (kW)', color: '#4b5563' },
+                                grid: { display: false }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            annotation: {
+                                annotations: {
+                                    gridLine: {
+                                        type: 'line',
+                                        yMin: 240,
+                                        yMax: 240,
+                                        borderColor: '#ef4444',
+                                        borderWidth: 4,
+                                        borderDash: [8, 6],
+                                        label: {
+                                            content: '电网功率',
+                                            enabled: true,
+                                            position: 'end',
+                                            color: '#ef4444',
+                                            font: { weight: 'bold' }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // 立即更新电网功率线到当前选择的值
+                updateGridLineAnnotation();
+            }
+
+            function updateGridLineAnnotation() {
+                if (chart) {
+                    const gridVal = parseFloat(gridPowerSelect.value);
+                    chart.options.plugins.annotation.annotations.gridLine.yMin = gridVal;
+                    chart.options.plugins.annotation.annotations.gridLine.yMax = gridVal;
+                    chart.update('none');
+                }
+            }
+
+            startBtn.addEventListener('click', () => {
+                if (simRunning) {
+                    clearInterval(simInterval);
+                    simInterval = null;
+                    simRunning = false;
+                    startBtn.textContent = '开始模拟';
+                    startBtn.classList.remove('bg-yellow-600');
+                    startBtn.classList.add('btn-primary');
+                    log('模拟暂停');
+                } else {
+                    simRunning = true;
+                    startBtn.textContent = '暂停模拟';
+                    startBtn.classList.remove('btn-primary');
+                    startBtn.classList.add('bg-yellow-600', 'text-white');
+                    const speed = parseInt(simSpeedSelect.value);
+                    const intervalMs = 1000 / speed;
+                    if (simInterval) clearInterval(simInterval);
+                    simInterval = setInterval(() => tick(), intervalMs);
+                    log('模拟开始');
+                }
+            });
+
+            resetBtn.addEventListener('click', resetSim);
+
+            totalCapRange.addEventListener('input', (e) => capDisplay.textContent = e.target.value + ' kWh');
+            slotNumInput.addEventListener('input', (e) => slotNumDisplay.textContent = e.target.value);
+            restTimeInput.addEventListener('input', (e) => restDisplay.textContent = e.target.value);
+
+            gridPowerSelect.addEventListener('change', () => {
+                gridLineLabel.textContent = gridPowerSelect.value;
+                updateGridLineAnnotation();
+            });
+
+            tempNormalBtn.addEventListener('click', () => {
+                currentTemp = 'normal';
+                tempNormalBtn.classList.remove('bg-gray-300', 'text-gray-700');
+                tempNormalBtn.classList.add('bg-blue-600', 'text-white');
+                tempLowBtn.classList.remove('bg-blue-600', 'text-white');
+                tempLowBtn.classList.add('bg-gray-300', 'text-gray-700');
+                log('切换到常温模式');
+            });
+
+            tempLowBtn.addEventListener('click', () => {
+                currentTemp = 'low';
+                tempLowBtn.classList.remove('bg-gray-300', 'text-gray-700');
+                tempLowBtn.classList.add('bg-blue-600', 'text-white');
+                tempNormalBtn.classList.remove('bg-blue-600', 'text-white');
+                tempNormalBtn.classList.add('bg-gray-300', 'text-gray-700');
+                log('切换到低温模式 (预热3分钟)');
+            });
+
+            initChart();
+            resetSim();
+
+            simSpeedSelect.addEventListener('change', () => {
+                if (simRunning) {
+                    clearInterval(simInterval);
+                    const speed = parseInt(simSpeedSelect.value);
+                    const intervalMs = 1000 / speed;
+                    simInterval = setInterval(() => tick(), intervalMs);
+                }
+            });
+
+            slotNumInput.addEventListener('change', resetSim);
+            restTimeInput.addEventListener('change', resetSim);
+            totalCapRange.addEventListener('change', resetSim);
+        })();
+    </script>
+</body>
+</html>
